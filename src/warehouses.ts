@@ -9,7 +9,7 @@ interface Warehouses extends RowDataPacket{
     id: number,
     name: string,
     code: string,
-    addres: string,
+    address: string,
     is_active: number
 }
 
@@ -19,12 +19,11 @@ router.get('/', async(req:Request, res:Response) =>{
         return res.status(404).json({message: 'Нет складов'})
     }
     const saveResult = result.map((item: Warehouses) =>{
-        const {id, name, code, addres, is_active} = item
-        return {id, name, code ,addres, is_active}
+        const {id, name, code, address, is_active} = item
+        return {id, name, code ,address, is_active}
     })
     // безопасно выводить только нужные переменные из всех строк таблицы
     // сколько бы не добавлялось сюда, для вывода на фронт добавить сюда
-
     res.status(200).json(saveResult)
 })
 
@@ -32,9 +31,9 @@ router.get('/:id', async(req: Request<{id: string}>, res: Response) =>{
     const id = req.params.id
 
     const [result] = await db.execute("Select * from warehouses where id = ?", [id])
-
+    console.log("tipp")
     res.status(200).json(result)
-})
+})  
 
 interface AddWarehouses{
     name: string
