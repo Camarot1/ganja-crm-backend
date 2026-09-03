@@ -8,6 +8,9 @@ app.use(express.json())
 import warehouses from './warehouses.js'
 app.use('/warehouses', warehouses)
 
+import products from './products.js'
+app.use('/products', products)
+
 app.get('/', (req: Request, res: Response) =>{
     res.json({message:'Сервер запущен'})
 })

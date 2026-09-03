@@ -39,4 +39,40 @@ router.get('/', async (req: Request, res: Response) => {
     }
 })
 
+router.get('/:id', async(req : Request<{id: string}>, res: Response) =>{
+
+    const id = req.params.id
+    const [result] = await db.execute<Products[]>('SELECT * FROM products where id = ?', [id])
+
+    res.status(200).json(result)
+
+})
+
+
+interface AddProducts{
+    sku: string
+    name: string
+    description: string
+    unit?: string
+    price: number   
+}
+
+router.post('/add', async(req:Request<{}, {}, AddProducts>, res: Response) =>{
+    const {sku, name, description, unit, price} = req.body
+
+    const saveunit = unit || 'шт'
+
+    if(!sku|| !name|| !description ||!price){
+        return res.status(500).json({message: 'Не указан один из пунктов'})
+    }
+    try{
+        const [result] = await db.execute<ResultSetHeader>('INSERT INTO products (sku, name, description, unit, price) values (?,?,?,?,?)', [sku, name, description, saveunit, price])
+        // добавить логику добавления товаров на все склады при создании товара
+        res.status(200).json({message: 'Успешное создание товара'})
+    }catch(error){
+        console.log(error)
+        res.status(500).json({message: error})
+    }
+})
+
 export default router

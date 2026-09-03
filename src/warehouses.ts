@@ -31,7 +31,6 @@ router.get('/:id', async(req: Request<{id: string}>, res: Response) =>{
     const id = req.params.id
 
     const [result] = await db.execute("Select * from warehouses where id = ?", [id])
-    console.log("tipp")
     res.status(200).json(result)
 })  
 
