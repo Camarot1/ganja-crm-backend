@@ -1,11 +1,11 @@
-import express, {Request, Response} from 'express'
+import express, { Request, Response } from 'express'
 import db from './db'
-import {ResultSetHeader} from 'mysql2/promise'
+import { ResultSetHeader } from 'mysql2/promise'
 import { RowDataPacket } from 'mysql2/promise'
 
 const router = express.Router()
 
-interface Warehouses extends RowDataPacket{
+interface Warehouses extends RowDataPacket {
     id: number,
     name: string,
     code: string,
@@ -13,48 +13,68 @@ interface Warehouses extends RowDataPacket{
     is_active: number
 }
 
-router.get('/', async(req:Request, res:Response) =>{
+router.get('/', async (req: Request, res: Response) => {
     const [result] = await db.execute<Warehouses[]>('SELECT * FROM warehouses')
-    if( result.length === 0){
-        return res.status(404).json({message: 'Нет складов'})
+    if (result.length === 0) {
+        return res.status(404).json({ message: 'Нет складов' })
     }
-    const saveResult = result.map((item: Warehouses) =>{
-        const {id, name, code, address, is_active} = item
-        return {id, name, code ,address, is_active}
+    const saveResult = result.map((item: Warehouses) => {
+        const { id, name, code, address, is_active } = item
+        return { id, name, code, address, is_active }
     })
     // безопасно выводить только нужные переменные из всех строк таблицы
     // сколько бы не добавлялось сюда, для вывода на фронт добавить сюда
     res.status(200).json(saveResult)
 })
 
-router.get('/:id', async(req: Request<{id: string}>, res: Response) =>{
+router.get('/:id', async (req: Request<{ id: string }>, res: Response) => {
     const id = req.params.id
 
     const [result] = await db.execute("Select * from warehouses where id = ?", [id])
     res.status(200).json(result)
-})  
+})
 
-interface AddWarehouses{
+interface AddWarehouses {
     name: string
     code: string
     address: string
 }
 
-router.post('/add', async(req: Request<{}, any, AddWarehouses>, res: Response) =>{
-    const {name, code, address} = req.body
+router.post('/add', async (req: Request<{}, any, AddWarehouses>, res: Response) => {
+    const { name, code, address } = req.body
 
-    if(!name || !code || !address){
-        return res.status(500).json({message: 'Не указанно название код или адрес'})
+    if (!name || !code || !address) {
+        return res.status(500).json({ message: 'Не указанно название код или адрес' })
     }
-    try{
-        const [result] = await db.execute<ResultSetHeader>('INSERT INTO warehouses (name, code ,address) values (?,?,?)', [name,code,address])
+    try {
+        const [result] = await db.execute<ResultSetHeader>('INSERT INTO warehouses (name, code ,address) values (?,?,?)', [name, code, address])
         // добавить логику автоматического добавления товаров на склад с нулевым количеством при создании
 
-        res.status(200).json({message:'Успешное создание склада'})
+        res.status(200).json({ message: 'Успешное создание склада' })
 
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ message: 'Ошибка при добавлении склада' })
+    }
+})
+
+router.get('/info', async(req: Request, res: Response) =>{
+    try{
+        const [result] = await db.execute('SELECT p.name, p.sku, s.quantity, p.unit FROM stock s JOIN products p ON s.product_id = p.id;')
+        console.log(result)
+        res.status(200).json({message: `Результат`})
     }catch(error){
         console.log(error)
-        res.status(500).json({message: 'Ошибка при добавлении склада'})
+    }
+})
+
+router.get('/info/:id', async (req: Request<{ id: string }>, res: Response) => {
+    const id = req.params.id
+    try {
+        const [result] = await db.execute('SELECT p.id, p.name, p.sku, s.quantity, p.unit FROM stock s JOIN products p ON s.product_id = p.id WHERE s.warehouse_id = ? AND s.quantity > 0;', [id])
+        res.status(200).json(result)
+    } catch (error){
+        console.log(error)
     }
 })
 
