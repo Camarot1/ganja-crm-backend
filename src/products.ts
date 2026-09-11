@@ -82,12 +82,13 @@ interface AddStock {
 }
 
 router.post('/addstock', async (req: Request<{}, {}, AddStock>, res: Response) => {
-    const { quantity, warehouses_id, product_id } = req.body
+    const { warehouses_id, quantity, product_id } = req.body
     try {
         const [result] = await db.execute<ResultSetHeader>('INSERT INTO stock (warehouse_id, product_id, quantity) VALUES (?,?,?)', [warehouses_id, product_id, quantity])
         res.status(200).json({ message: `Успешное добавление товара на склад` })
     } catch (error) {
         console.log(error)
+        res.status(500).json({message: 'ошибка добавления на сервер'})
     }
 })
 

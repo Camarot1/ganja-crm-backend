@@ -71,7 +71,7 @@ router.get('/info', async(req: Request, res: Response) =>{
 router.get('/info/:id', async (req: Request<{ id: string }>, res: Response) => {
     const id = req.params.id
     try {
-        const [result] = await db.execute('SELECT p.id, p.name, p.sku, s.quantity, p.unit FROM stock s JOIN products p ON s.product_id = p.id WHERE s.warehouse_id = ? AND s.quantity > 0;', [id])
+        const [result] = await db.execute('SELECT p.id, p.name, p.sku, s.quantity, p.unit FROM stock s JOIN products p ON s.product_id = p.id WHERE s.warehouse_id = ?;', [id])
         res.status(200).json(result)
     } catch (error){
         console.log(error)
