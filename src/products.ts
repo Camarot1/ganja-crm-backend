@@ -88,7 +88,7 @@ router.post('/addstock', async (req: Request<{}, {}, AddStock>, res: Response) =
         res.status(200).json({ message: `Успешное добавление товара на склад` })
     } catch (error) {
         console.log(error)
-        res.status(500).json({message: 'ошибка добавления на сервер'})
+        res.status(500).json({ message: 'ошибка добавления на сервер' })
     }
 })
 
@@ -99,6 +99,7 @@ router.post('/addquantity', async (req: Request<{}, {}, AddStock>, res: Response
 
     try {
         const [result] = await db.execute<ResultSetHeader>('UPDATE stock SET quantity = quantity + ? WHERE warehouse_id = ? AND product_id = ?;', [quantity, warehouses_id, product_id])
+        await addHistory({ quantity, warehouses_id, product_id, status: 'add' })
         res.status(200).json({ message: `Успешное обновление, добавили ${quantity}` })
     } catch (error) {
         console.log(error)
@@ -111,16 +112,28 @@ router.post('/removequantity', async (req: Request<{}, {}, AddStock>, res: Respo
     const { quantity, warehouses_id, product_id } = req.body
     try {
         const [result] = await db.execute<RowDataPacket[]>('SELECT quantity FROM stock WHERE product_id = ? AND warehouse_id = ?', [product_id, warehouses_id])
-        console.log(result[0])
         if (!result.length || (result[0]?.quantity ?? 0) < quantity) {
             return res.status(400).json({ message: 'Недостаточно товара на складе' })
         }
         const [update] = await db.execute<ResultSetHeader>('UPDATE stock SET quantity = quantity - ? WHERE warehouse_id = ? AND product_id = ?;', [quantity, warehouses_id, product_id])
+        const history = await addHistory({ quantity, warehouses_id, product_id, status: 'remove' })
+        console.log(history)
         res.status(200).json({ message: 'Успешная отгрузка' })
     } catch (error) {
         console.log(error)
         res.status(500).json({ message: 'Ошибка сервера' })
     }
 })
+
+
+// функция для добавления истории действий на складе
+const addHistory = async ({ quantity, warehouses_id, product_id, status }: AddStock & { status: string }) => {
+    try {
+        await db.execute<ResultSetHeader>('INSERT INTO history (warehouse_id,product_id,quantity,status) values (?,?,?, ?)', [warehouses_id, product_id, quantity, status])
+        return {message: 'Успешно'}
+    }catch(error){
+        return error
+    }
+}
 
 export default router
