@@ -81,7 +81,7 @@ router.get('/info/:id', async (req: Request<{ id: string }>, res: Response) => {
 router.get('/history/:id', async(req: Request<{id:string}>, res: Response) => {
     const id = req.params.id
     try{
-        const [result] = await db.execute('SELECT * from history')
+        const [result] = await db.execute('SELECT * from history where warehouse_id = ?', [id])
         res.status(200).json(result)
     }catch(error){
         console.log(error)

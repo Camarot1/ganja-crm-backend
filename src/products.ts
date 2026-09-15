@@ -113,7 +113,7 @@ router.post('/removequantity', async (req: Request<{}, {}, AddStock>, res: Respo
     try {
         const [result] = await db.execute<RowDataPacket[]>('SELECT quantity FROM stock WHERE product_id = ? AND warehouse_id = ?', [product_id, warehouses_id])
         if (!result.length || (result[0]?.quantity ?? 0) < quantity) {
-            return res.status(400).json({ message: 'Недостаточно товара на складе' })
+            return res.status(200).json({ message: 'Недостаточно товара на складе' })
         }
         const [update] = await db.execute<ResultSetHeader>('UPDATE stock SET quantity = quantity - ? WHERE warehouse_id = ? AND product_id = ?;', [quantity, warehouses_id, product_id])
         const history = await addHistory({ quantity, warehouses_id, product_id, status: 'remove' })
