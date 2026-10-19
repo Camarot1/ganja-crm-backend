@@ -4,7 +4,10 @@ const pool = mysql.createPool({
     host: 'localhost',
     user: 'root',
     password:'',
-    database: 'ganja'
+    database: 'ganja',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 }) as mysql.Pool;
 
 export default pool;

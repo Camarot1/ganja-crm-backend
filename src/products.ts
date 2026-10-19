@@ -136,4 +136,11 @@ const addHistory = async ({ quantity, warehouses_id, product_id, status }: AddSt
     }
 }
 
+export interface ItemLayout{
+    id: number
+    name: string
+    sku: string
+    quantity: number
+}
+
 export default router
