@@ -168,5 +168,22 @@ router.post('/layout/deleteslot/:id', async(req: Request<{id: string}>, res: Res
     }
 })
 
+interface Hightlight{
+    idCard: number
+    value: ItemLayout
+}
+
+router.post('/layout/additem/:id', async(req: Request<{id: string}, any, Hightlight >, res: Response) => {
+    const id = Number(req.params.id)
+    const data = req.body
+    try{
+        await db.execute<ResultSetHeader>(`INSERT INTO stock_slot_allocations (warehouse_id, slot_code, product_id, quantity) values (?,?,?,?)`, [id, data.idCard, data.value.id, data.value.quantity])
+        res.status(200).json('ok')
+    }catch(error){
+        console.log(error)
+        res.status(400).json('При добавлении произошла ошибка')
+    }
+})
+
 
 export default router
