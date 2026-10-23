@@ -185,5 +185,16 @@ router.post('/layout/additem/:id', async(req: Request<{id: string}, any, Hightli
     }
 })
 
+router.get('/layout/notlayout/:id', async(req: Request<{id: string}>, res: Response) =>{
+    const id = req.params.id
+    try{
+        const [data] = await db.execute('SELECT nli.product_id as id, p.name AS name, p.sku AS sku, nli.quantity as quantity FROM not_layout_item nli LEFT JOIN products p ON nli.product_id = p.id WHERE nli.warehouse_id = ?', [id])
+        res.status(200).json(data)
+    }catch(error){
+        console.log(error)
+        res.status(400).json('Произошла ошибка')
+    }
+})
+
 
 export default router
