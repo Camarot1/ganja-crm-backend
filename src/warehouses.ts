@@ -3,6 +3,8 @@ import db from './db'
 import { ResultSetHeader } from 'mysql2/promise'
 import { RowDataPacket } from 'mysql2/promise'
 
+import { type Type, type NotLayoutCommand, AnalyzeLayoutItem, LayoutCommand } from '../logic/notlayout'
+
 const router = express.Router()
 
 interface Warehouses extends RowDataPacket {
@@ -156,41 +158,53 @@ router.post('/layout/addslot/:id', async (req: Request<{ id: string }>, res: Res
     }
 })
 
-router.post('/layout/deleteslot/:id', async(req: Request<{id: string}>, res: Response) => {
+router.post('/layout/deleteslot/:id', async (req: Request<{ id: string }>, res: Response) => {
     const id = req.params.id
     const data = req.body.value
-    try{
-       await db.execute('DELETE FROM warehouse_slots where warehouse_id = ? and  code = ?', [id, data])
-       res.status(200).json('Удален слот')
-    }catch(error){
+    try {
+        await db.execute('DELETE FROM warehouse_slots where warehouse_id = ? and  code = ?', [id, data])
+        res.status(200).json('Удален слот')
+    } catch (error) {
         console.log(error)
         res.json('error')
     }
 })
 
-interface Hightlight{
-    idCard: number
-    value: ItemLayout
+interface HighlightValue extends ItemLayout {
+    table_id: number
 }
 
-router.post('/layout/additem/:id', async(req: Request<{id: string}, any, Hightlight >, res: Response) => {
+interface Hightlight {
+    idCard: number
+    value: HighlightValue
+}
+
+router.post('/layout/additem/:id', async (req: Request<{ id: string }, any, Hightlight>, res: Response) => {
     const id = Number(req.params.id)
     const data = req.body
-    try{
+    const tableId = data.value.table_id
+    console.log(data)
+    try {
         await db.execute<ResultSetHeader>(`INSERT INTO stock_slot_allocations (warehouse_id, slot_code, product_id, quantity) values (?,?,?,?)`, [id, data.idCard, data.value.id, data.value.quantity])
+        const [quantity]: any = await db.execute('select quantity from not_layout_item where id = ?', [tableId])
+        const command = AnalyzeLayoutItem(data.value.quantity, quantity[0].quantity, tableId)
+        if (command.type == 'ERROR'){
+            res.status(400).json({message: command.message!})
+        }
+        await LayoutCommand(command)
         res.status(200).json('ok')
-    }catch(error){
+    } catch (error) {
         console.log(error)
         res.status(400).json('При добавлении произошла ошибка')
     }
 })
 
-router.get('/layout/notlayout/:id', async(req: Request<{id: string}>, res: Response) =>{
+router.get('/layout/notlayout/:id', async (req: Request<{ id: string }>, res: Response) => {
     const id = req.params.id
-    try{
-        const [data] = await db.execute('SELECT nli.product_id as id, p.name AS name, p.sku AS sku, nli.quantity as quantity FROM not_layout_item nli LEFT JOIN products p ON nli.product_id = p.id WHERE nli.warehouse_id = ?', [id])
+    try {
+        const [data] = await db.execute('SELECT nli.id AS table_id, nli.product_id as id, p.name AS name, p.sku AS sku, nli.quantity as quantity FROM not_layout_item nli LEFT JOIN products p ON nli.product_id = p.id WHERE nli.warehouse_id = ?', [id])
         res.status(200).json(data)
-    }catch(error){
+    } catch (error) {
         console.log(error)
         res.status(400).json('Произошла ошибка')
     }
