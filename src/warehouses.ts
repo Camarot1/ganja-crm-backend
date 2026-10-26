@@ -115,7 +115,8 @@ router.get('/layout/:id', async (req: Request<{ id: string }>, res: Response) =>
     const id = req.params.id
     try {
         const respon = []
-        const [slotsLehgth]: any = await db.execute('select * from warehouse_slots where warehouse_id = ?', [id])
+        const [slotsLehgth]: any = await db.execute('SELECT id, warehouse_id, code FROM warehouse_slots WHERE warehouse_id = 1 ORDER BY CAST(code AS UNSIGNED) ASC;', [id])
+        // обязательно прописывать везде вот такой запрос для получения всех полей, потому что поле в бд varchar и оно отрисовывает как 1 10 11 2 3
         for (let i = 0; i < slotsLehgth.length; i++) {
             const [test] = await db.execute("SELECT p.id, p.name, p.sku, a.quantity FROM stock_slot_allocations AS a JOIN products AS p ON p.id = a.product_id WHERE a.warehouse_id = ? AND a.slot_code = ?;", [id, i + 1])
             const slot = String(slotsLehgth[i].code).padStart(3, '0')
@@ -188,8 +189,8 @@ router.post('/layout/additem/:id', async (req: Request<{ id: string }, any, High
         await db.execute<ResultSetHeader>(`INSERT INTO stock_slot_allocations (warehouse_id, slot_code, product_id, quantity) values (?,?,?,?)`, [id, data.idCard, data.value.id, data.value.quantity])
         const [quantity]: any = await db.execute('select quantity from not_layout_item where id = ?', [tableId])
         const command = AnalyzeLayoutItem(data.value.quantity, quantity[0].quantity, tableId)
-        if (command.type == 'ERROR'){
-            res.status(400).json({message: command.message!})
+        if (command.type == 'ERROR') {
+            res.status(400).json({ message: command.message! })
         }
         await LayoutCommand(command)
         res.status(200).json('ok')
@@ -207,6 +208,29 @@ router.get('/layout/notlayout/:id', async (req: Request<{ id: string }>, res: Re
     } catch (error) {
         console.log(error)
         res.status(400).json('Произошла ошибка')
+    }
+})
+
+router.get('/layout/count/:id', async (req: Request<{ id: string }>, res: Response) => {
+    const id = req.params.id
+    try {
+        const [slots]: any = await db.execute('select * from warehouse_slots where warehouse_id = ?', [id])
+        const [layout]: any = await db.execute('select * from stock_slot_allocations where warehouse_id = ?', [id])
+        const [free1]: any = await db.execute('SELECT COUNT(*) AS empty_slots FROM warehouse_slots ws WHERE ws.warehouse_id = ? AND NOT EXISTS ( SELECT 1 FROM stock_slot_allocations ssa WHERE ssa.warehouse_id = ws.warehouse_id AND ssa.slot_code = ws.code)', [id])
+        const total = slots.length
+        const free = free1[0].empty_slots
+        const occupied = total - free
+        const [allocated]: any = await db.execute(`SELECT COALESCE(SUM(quantity), 0) AS total_quantity FROM stock_slot_allocations WHERE warehouse_id = ?`, [id]);
+        const [unllocated]: any = await db.execute(`SELECT COALESCE(SUM(quantity), 0) as total_quantity from not_layout_item where warehouse_id = ?`, [id])
+        res.status(200).json({
+            totalSlots: total,
+            freeSlots: free, occupiedSlots: occupied,
+            totalStock: Number(allocated[0].total_quantity) + Number(unllocated[0].total_quantity),
+            allocated: Number(allocated[0].total_quantity),
+            unlocated: Number(unllocated[0].total_quantity)
+        })
+    } catch (error) {
+        console.log(error)
     }
 })
 

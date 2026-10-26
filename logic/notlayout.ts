@@ -51,7 +51,7 @@ export async function LayoutCommand(command: NotLayoutCommand): Promise<void> {
             break
 
         case 'ERROR':
-            console.warn(`Ошибка при выполнении команды ${command.message}`)
+            console.log(`Ошибка при выполнении команды ${command.message}`)
             break
         
         default:
