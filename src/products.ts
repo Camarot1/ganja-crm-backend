@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express'
 import db from './db'
 import { ResultSetHeader } from 'mysql2/promise'
 import { RowDataPacket } from 'mysql2/promise'
+import { AnalizeLayoutAction, StockCheck, StockCommand } from '../logic/layout'
 
 const router = express.Router()
 
@@ -75,7 +76,7 @@ router.post('/add', async (req: Request<{}, {}, AddProducts>, res: Response) => 
     }
 })
 // этот интерфейс использую не только для добавления но и удаление и создания
-interface AddStock {
+export interface AddStock {
     quantity: number
     warehouses_id: string
     product_id: string
@@ -99,6 +100,8 @@ router.post('/addquantity', async (req: Request<{}, {}, AddStock>, res: Response
 
     try {
         const [result] = await db.execute<ResultSetHeader>('UPDATE stock SET quantity = quantity + ? WHERE warehouse_id = ? AND product_id = ?;', [quantity, warehouses_id, product_id])
+        const data = await AnalizeLayoutAction(product_id, warehouses_id)
+        await StockCommand(data,{quantity, warehouses_id, product_id})
         await addHistory({ quantity, warehouses_id, product_id, status: 'add' })
         res.status(200).json({ message: `Успешное обновление, добавили ${quantity}` })
     } catch (error) {
@@ -116,8 +119,9 @@ router.post('/removequantity', async (req: Request<{}, {}, AddStock>, res: Respo
             return res.status(200).json({ message: 'Недостаточно товара на складе' })
         }
         const [update] = await db.execute<ResultSetHeader>('UPDATE stock SET quantity = quantity - ? WHERE warehouse_id = ? AND product_id = ?;', [quantity, warehouses_id, product_id])
+        await StockCommand ({type: 'DELETE'}, {quantity, warehouses_id, product_id})
+        await StockCheck (product_id, warehouses_id)
         const history = await addHistory({ quantity, warehouses_id, product_id, status: 'remove' })
-        console.log(history)
         res.status(200).json({ message: 'Успешная отгрузка' })
     } catch (error) {
         console.log(error)

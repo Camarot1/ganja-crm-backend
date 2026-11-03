@@ -2,8 +2,20 @@ import express, { Request, Response } from 'express'
 import db from './db'
 import { ResultSetHeader } from 'mysql2/promise'
 import { RowDataPacket } from 'mysql2/promise'
+import {
+    type ItemLayout,
+} from './products'
 
-import { type Type, type NotLayoutCommand, AnalyzeLayoutItem, LayoutCommand } from '../logic/notlayout'
+import {
+    type Type,
+    type NotLayoutCommand,
+    AnalyzeLayoutItem,
+    LayoutCommand,
+    AnalizeLayoutAction,
+    StockCommand,
+    type AnalizeLayoutActionType,
+    StockCheck
+} from '../logic/layout'
 
 const router = express.Router()
 
@@ -131,7 +143,7 @@ router.get('/layout/:id', async (req: Request<{ id: string }>, res: Response) =>
         res.json(error)
     }
 })
-import { ItemLayout } from './products'
+
 interface Layout {
     id: number
     warehouse_id: string
@@ -231,6 +243,24 @@ router.get('/layout/count/:id', async (req: Request<{ id: string }>, res: Respon
         })
     } catch (error) {
         console.log(error)
+    }
+})
+
+import { type AddStock } from './products'
+
+router.post('/test', async (req: Request<{}, any, AddStock>, res: Response) => {
+    const { quantity, warehouses_id, product_id } = req.body
+    const sbor = { quantity, warehouses_id, product_id }
+    try {
+
+        const data = await AnalizeLayoutAction(product_id, warehouses_id)
+        // прописать первый параметр в ковычках если передаешь delete
+      //  await StockCommand(data, { quantity, warehouses_id, product_id })
+      //  await StockCheck(product_id, warehouses_id)
+        res.status(200).json("ok")
+    } catch (error) {
+        console.log(error)
+        res.status(500).json('error')
     }
 })
 
