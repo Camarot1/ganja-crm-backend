@@ -86,10 +86,29 @@ router.post('/addstock', async (req: Request<{}, {}, AddStock>, res: Response) =
     const { warehouses_id, quantity, product_id } = req.body
     try {
         const [result] = await db.execute<ResultSetHeader>('INSERT INTO stock (warehouse_id, product_id, quantity) VALUES (?,?,?)', [warehouses_id, product_id, quantity])
+        const data = await AnalizeLayoutAction(product_id, warehouses_id)
+        await StockCommand(data, { quantity, warehouses_id, product_id })
         res.status(200).json({ message: `Успешное добавление товара на склад` })
     } catch (error) {
         console.log(error)
         res.status(500).json({ message: 'ошибка добавления на сервер' })
+    }
+})
+
+interface RemoveStock extends Omit<AddStock, 'quantity'>{}
+
+router.post('/removefromstock', async (req: Request<{}, {}, RemoveStock>, res: Response) => {
+    const {warehouses_id, product_id} = req.body
+    try{
+        const [check] : any = await db.execute('select * from stock where product_id = ? and warehouse_id = ?;', [product_id, warehouses_id])
+        if(check[0].quantity > 0){
+            res.status(501).json({message: 'Остаток на складе больше 0'})
+        }else{
+            await db.execute<ResultSetHeader>('DELETE from stock where warehouse_id = ? and product_id = ?', [warehouses_id, product_id])
+        }
+        res.status(200).json({message: 'Успешное удаление товара'})
+    }catch(error){
+        res.status(500).json({message: 'Не удалось удалить товар'})
     }
 })
 
@@ -101,7 +120,7 @@ router.post('/addquantity', async (req: Request<{}, {}, AddStock>, res: Response
     try {
         const [result] = await db.execute<ResultSetHeader>('UPDATE stock SET quantity = quantity + ? WHERE warehouse_id = ? AND product_id = ?;', [quantity, warehouses_id, product_id])
         const data = await AnalizeLayoutAction(product_id, warehouses_id)
-        await StockCommand(data,{quantity, warehouses_id, product_id})
+        await StockCommand(data, { quantity, warehouses_id, product_id })
         await addHistory({ quantity, warehouses_id, product_id, status: 'add' })
         res.status(200).json({ message: `Успешное обновление, добавили ${quantity}` })
     } catch (error) {
@@ -119,8 +138,8 @@ router.post('/removequantity', async (req: Request<{}, {}, AddStock>, res: Respo
             return res.status(200).json({ message: 'Недостаточно товара на складе' })
         }
         const [update] = await db.execute<ResultSetHeader>('UPDATE stock SET quantity = quantity - ? WHERE warehouse_id = ? AND product_id = ?;', [quantity, warehouses_id, product_id])
-        await StockCommand ({type: 'DELETE'}, {quantity, warehouses_id, product_id})
-        await StockCheck (product_id, warehouses_id)
+        await StockCommand({ type: 'DELETE' }, { quantity, warehouses_id, product_id })
+        await StockCheck(product_id, warehouses_id)
         const history = await addHistory({ quantity, warehouses_id, product_id, status: 'remove' })
         res.status(200).json({ message: 'Успешная отгрузка' })
     } catch (error) {
@@ -134,13 +153,13 @@ router.post('/removequantity', async (req: Request<{}, {}, AddStock>, res: Respo
 const addHistory = async ({ quantity, warehouses_id, product_id, status }: AddStock & { status: string }) => {
     try {
         await db.execute<ResultSetHeader>('INSERT INTO history (warehouse_id,product_id,quantity,status) values (?,?,?, ?)', [warehouses_id, product_id, quantity, status])
-        return {message: 'Успешно'}
-    }catch(error){
+        return { message: 'Успешно' }
+    } catch (error) {
         return error
     }
 }
 
-export interface ItemLayout{
+export interface ItemLayout {
     id: number
     name: string
     sku: string

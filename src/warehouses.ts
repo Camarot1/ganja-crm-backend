@@ -41,16 +41,6 @@ router.get('/', async (req: Request, res: Response) => {
     res.status(200).json(saveResult)
 })
 
-router.get('/test', async (req: Request, res: Response) => {
-    try {
-        const [result] = await db.execute('SELECT a.warehouse_id, a.slot_code, a.product_id, p.name AS product_name, p.sku, a.quantity FROM stock_slot_allocations AS a JOIN products AS p ON p.id = a.product_id WHERE a.warehouse_id = 1;')
-        console.log(result)
-
-        res.json({ product: result })
-    } catch (error) {
-        console.log(error)
-    }
-})
 
 router.get('/:id', async (req: Request<{ id: string }>, res: Response) => {
     const id = req.params.id
@@ -127,7 +117,7 @@ router.get('/layout/:id', async (req: Request<{ id: string }>, res: Response) =>
     const id = req.params.id
     try {
         const respon = []
-        const [slotsLehgth]: any = await db.execute('SELECT id, warehouse_id, code FROM warehouse_slots WHERE warehouse_id = 1 ORDER BY CAST(code AS UNSIGNED) ASC;', [id])
+        const [slotsLehgth]: any = await db.execute('SELECT id, warehouse_id, code FROM warehouse_slots WHERE warehouse_id = ? ORDER BY CAST(code AS UNSIGNED) ASC;', [id])
         // обязательно прописывать везде вот такой запрос для получения всех полей, потому что поле в бд varchar и оно отрисовывает как 1 10 11 2 3
         for (let i = 0; i < slotsLehgth.length; i++) {
             const [test] = await db.execute("SELECT p.id, p.name, p.sku, a.quantity FROM stock_slot_allocations AS a JOIN products AS p ON p.id = a.product_id WHERE a.warehouse_id = ? AND a.slot_code = ?;", [id, i + 1])
@@ -250,9 +240,7 @@ import { type AddStock } from './products'
 
 router.post('/test', async (req: Request<{}, any, AddStock>, res: Response) => {
     const { quantity, warehouses_id, product_id } = req.body
-    const sbor = { quantity, warehouses_id, product_id }
     try {
-
         const data = await AnalizeLayoutAction(product_id, warehouses_id)
         // прописать первый параметр в ковычках если передаешь delete
       //  await StockCommand(data, { quantity, warehouses_id, product_id })
